@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoramento Veicular 2.0</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>Monitoramento Veicular</h1>
+    <p>Telemetria GPS em tempo real</p>
+  </div>
+  <div id="status" class="offline">● OFFLINE</div>
+</header>
+
+<main>
+<section class="cards">
+  <div class="card speed-card" id="speedCard">
+    <div class="label">VELOCIDADE ATUAL</div>
+    <div><span id="speed">0.0</span><span class="unit"> km/h</span></div>
+    <div id="speedStatus" class="normal">Dentro do limite</div>
+  </div>
+  <div class="card"><div class="label">VELOCIDADE MÁXIMA</div><div class="metric"><span id="maxSpeed">0.0</span> km/h</div></div>
+  <div class="card"><div class="label">PONTOS REGISTRADOS</div><div class="metric" id="points">0</div></div>
+  <div class="card"><div class="label">LATITUDE</div><div class="metric small" id="latitude">--</div></div>
+  <div class="card"><div class="label">LONGITUDE</div><div class="metric small" id="longitude">--</div></div>
+  <div class="card"><div class="label">LIMITE</div><div class="metric">30 km/h</div></div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Localização em tempo real</h2>
+    <a id="mapsLink" href="#" target="_blank" rel="noopener">Abrir no Google Maps</a>
+  </div>
+  <div id="map"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Gráfico de velocidade</h2>
+    <button id="clearHistory">Nova viagem / Limpar histórico</button>
+  </div>
+  <div class="chart-wrap"><canvas id="speedChart"></canvas></div>
+</section>
+
+<section class="info">
+  <span>Última atualização:</span> <strong id="updated">--</strong>
+</section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
