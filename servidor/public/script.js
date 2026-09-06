@@ -10,6 +10,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let marker = null;
 let route = L.polyline([], { weight: 5 }).addTo(map);
 let history = [];
+let selectedTripIndex = null; // null = tempo real
 
 const speedEl = document.getElementById("speed");
 const maxEl = document.getElementById("maxSpeed");
@@ -26,6 +27,9 @@ const avgSpeedEl = document.getElementById("avgSpeed");
 const travelTimeEl = document.getElementById("travelTime");
 const tripNumberEl = document.getElementById("tripNumber");
 const tripCountEl = document.getElementById("tripCount");
+const tripListEl = document.getElementById("tripList");
+const viewModeEl = document.getElementById("viewMode");
+const liveTripButton = document.getElementById("liveTrip");
 
 const chart = new Chart(document.getElementById("speedChart"), {
   type: "line",
@@ -79,8 +83,26 @@ function formatDuration(ms) {
   const seconds = totalSeconds % 60;
 
   return [hours, minutes, seconds]
-    .map(value => String(value).padStart(2, "0"))
+    .map(v => String(v).padStart(2, "0"))
     .join(":");
+}
+
+function formatDate(timestamp) {
+  return new Date(timestamp).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
+function formatDateTime(timestamp) {
+  return new Date(timestamp).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function validGpsHistory() {
@@ -93,8 +115,6 @@ function validGpsHistory() {
   );
 }
 
-// Divide o histórico em viagens automaticamente.
-// Uma pausa maior que 5 minutos inicia uma nova viagem.
 function splitTrips(points) {
   if (!points.length) return [];
 
@@ -130,14 +150,63 @@ function calculateDistance(points) {
   return total;
 }
 
-function updateTripSummary() {
-  const valid = validGpsHistory();
-  const trips = splitTrips(valid);
+function getTrips() {
+  return splitTrips(validGpsHistory());
+}
 
+function getCurrentTrip() {
+  const trips = getTrips();
+  return trips.length ? trips[trips.length - 1] : [];
+}
+
+function getSelectedTrip() {
+  const trips = getTrips();
+
+  if (!trips.length) return [];
+
+  if (selectedTripIndex === null) {
+    return trips[trips.length - 1];
+  }
+
+  return trips[selectedTripIndex] || trips[trips.length - 1];
+}
+
+function tripStats(trip) {
+  if (!trip.length) {
+    return {
+      distance: 0,
+      average: 0,
+      max: 0,
+      duration: 0
+    };
+  }
+
+  const speeds = trip.map(p => Number(p.speed));
+  const max = Math.max(...speeds);
+
+  const start = new Date(trip[0].timestamp).getTime();
+  const end = new Date(trip[trip.length - 1].timestamp).getTime();
+  const duration = Math.max(0, end - start);
+  const hours = duration / 3600000;
+  const distance = calculateDistance(trip);
+
+  let average = 0;
+  if (hours > 0) {
+    average = distance / hours;
+  } else {
+    average = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
+  }
+
+  return { distance, average, max, duration };
+}
+
+function updateTripIndicators() {
+  const trips = getTrips();
   tripCountEl.textContent = trips.length;
 
   if (!trips.length) {
     tripNumberEl.textContent = "0";
+    pointsEl.textContent = "0";
     distanceEl.textContent = "0.00";
     avgSpeedEl.textContent = "0.0";
     travelTimeEl.textContent = "00:00:00";
@@ -145,47 +214,58 @@ function updateTripSummary() {
     return;
   }
 
-  const currentTrip = trips[trips.length - 1];
-  tripNumberEl.textContent = trips.length;
+  const actualIndex = selectedTripIndex === null
+    ? trips.length - 1
+    : Math.min(selectedTripIndex, trips.length - 1);
 
-  const distance = calculateDistance(currentTrip);
-  const speeds = currentTrip.map(p => Number(p.speed));
-  const max = speeds.length ? Math.max(...speeds) : 0;
+  const trip = trips[actualIndex];
+  const stats = tripStats(trip);
 
-  const start = new Date(currentTrip[0].timestamp).getTime();
-  const end = new Date(currentTrip[currentTrip.length - 1].timestamp).getTime();
-  const durationMs = Math.max(0, end - start);
-  const durationHours = durationMs / 3600000;
+  tripNumberEl.textContent = actualIndex + 1;
+  pointsEl.textContent = trip.length;
+  distanceEl.textContent = stats.distance.toFixed(2);
+  avgSpeedEl.textContent = stats.average.toFixed(1);
+  travelTimeEl.textContent = formatDuration(stats.duration);
+  maxEl.textContent = stats.max.toFixed(1);
 
-  // Média baseada em distância / tempo, quando existe intervalo suficiente.
-  // Para uma viagem com apenas um ponto, usa a velocidade registrada.
-  let avgSpeed = 0;
-  if (durationHours > 0) {
-    avgSpeed = distance / durationHours;
-  } else if (speeds.length) {
-    avgSpeed = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
-  }
+  viewModeEl.textContent = selectedTripIndex === null
+    ? "Exibindo viagem atual em tempo real"
+    : `Visualizando viagem #${actualIndex + 1}`;
 
-  distanceEl.textContent = distance.toFixed(2);
-  avgSpeedEl.textContent = avgSpeed.toFixed(1);
-  travelTimeEl.textContent = formatDuration(durationMs);
-  maxEl.textContent = max.toFixed(1);
+  liveTripButton.style.display = selectedTripIndex === null ? "none" : "block";
 }
 
-function refreshChart() {
-  const valid = validGpsHistory();
-  const trips = splitTrips(valid);
-  const data = trips.length ? trips[trips.length - 1].slice(-300) : [];
+function refreshChart(trip = getSelectedTrip()) {
+  const data = trip.slice(-300);
 
   chart.data.labels = data.map(p =>
     new Date(p.timestamp).toLocaleTimeString("pt-BR")
   );
+
   chart.data.datasets[0].data = data.map(p => Number(p.speed));
   chart.data.datasets[1].data = data.map(() => SPEED_LIMIT);
+
   chart.update();
 }
 
-function updateMap(data, addToRoute = true) {
+function drawTripRoute(trip, fit = true) {
+  const positions = trip.map(p => [
+    Number(p.latitude),
+    Number(p.longitude)
+  ]);
+
+  route.setLatLngs(positions);
+
+  if (fit && positions.length > 0) {
+    if (positions.length === 1) {
+      map.setView(positions[0], 17);
+    } else {
+      map.fitBounds(route.getBounds(), { padding: [25, 25] });
+    }
+  }
+}
+
+function updateMapMarker(data) {
   const lat = Number(data.latitude);
   const lon = Number(data.longitude);
 
@@ -194,25 +274,14 @@ function updateMap(data, addToRoute = true) {
   const pos = [lat, lon];
 
   if (!marker) {
-    marker = L.marker(pos).addTo(map).bindPopup("Veículo");
-    map.setView(pos, 17);
+    marker = L.marker(pos).addTo(map);
   } else {
     marker.setLatLng(pos);
-  }
-
-  if (addToRoute) {
-    const currentRoute = route.getLatLngs();
-    const lastPoint = currentRoute[currentRoute.length - 1];
-
-    if (!lastPoint || lastPoint.lat !== lat || lastPoint.lng !== lon) {
-      route.addLatLng(pos);
-    }
   }
 
   const speed = Number(data.speed);
   marker.setPopupContent(
     `<b>Veículo</b><br>` +
-    `Viagem: #${splitTrips(validGpsHistory()).length}<br>` +
     `Velocidade: ${speed.toFixed(1)} km/h<br>` +
     `Latitude: ${lat.toFixed(6)}<br>` +
     `Longitude: ${lon.toFixed(6)}`
@@ -221,7 +290,7 @@ function updateMap(data, addToRoute = true) {
   mapsLink.href = `https://www.google.com/maps/@${lat},${lon},17z`;
 }
 
-function updatePanel(data, addToRoute = true) {
+function updateLivePanel(data) {
   if (data.latitude === null) return;
 
   const speed = Number(data.speed);
@@ -242,31 +311,121 @@ function updatePanel(data, addToRoute = true) {
     speedStatus.className = "normal";
   }
 
-  updatedEl.textContent = new Date(data.timestamp).toLocaleTimeString("pt-BR");
+  updatedEl.textContent =
+    new Date(data.timestamp).toLocaleTimeString("pt-BR");
 
-  updateMap(data, addToRoute);
-  updateTripSummary();
-  refreshChart();
+  updateMapMarker(data);
+
+  if (selectedTripIndex === null) {
+    drawTripRoute(getCurrentTrip(), false);
+    updateTripIndicators();
+    refreshChart();
+  }
+}
+
+function renderTripList() {
+  const trips = getTrips();
+  tripListEl.innerHTML = "";
+
+  if (!trips.length) {
+    tripListEl.innerHTML =
+      `<div class="empty-trips">Nenhuma viagem registrada ainda.</div>`;
+    return;
+  }
+
+  for (let i = trips.length - 1; i >= 0; i--) {
+    const trip = trips[i];
+    const stats = tripStats(trip);
+    const first = trip[0];
+    const last = trip[trip.length - 1];
+
+    const item = document.createElement("button");
+    item.className =
+      "trip-item" +
+      (selectedTripIndex === i ? " selected" : "");
+
+    item.innerHTML = `
+      <div class="trip-main">
+        <strong>Viagem #${i + 1}</strong>
+        <span>${formatDate(first.timestamp)}</span>
+      </div>
+      <div class="trip-details">
+        <span>${stats.distance.toFixed(2)} km</span>
+        <span>${formatDuration(stats.duration)}</span>
+        <span>Máx. ${stats.max.toFixed(1)} km/h</span>
+      </div>
+      <div class="trip-period">
+        ${formatDateTime(first.timestamp)} → ${formatDateTime(last.timestamp)}
+      </div>
+    `;
+
+    item.addEventListener("click", () => selectTrip(i));
+    tripListEl.appendChild(item);
+  }
+}
+
+function selectTrip(index) {
+  const trips = getTrips();
+  if (!trips[index]) return;
+
+  selectedTripIndex = index;
+
+  const trip = trips[index];
+  drawTripRoute(trip, true);
+  updateTripIndicators();
+  refreshChart(trip);
+  renderTripList();
+
+  // O marcador continua mostrando a posição atual do veículo.
+  // O mapa mostra a rota histórica selecionada.
+}
+
+function showLiveTrip() {
+  selectedTripIndex = null;
+
+  const currentTrip = getCurrentTrip();
+
+  if (currentTrip.length) {
+    drawTripRoute(currentTrip, true);
+  }
+
+  updateTripIndicators();
+  refreshChart(currentTrip);
+  renderTripList();
+
+  if (history.length) {
+    updateMapMarker(history[history.length - 1]);
+  }
 }
 
 async function loadHistory() {
   try {
     const response = await fetch("/api/history");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
     history = await response.json();
-    if (!Array.isArray(history)) history = [];
 
-    const valid = validGpsHistory();
-    const positions = valid.map(p => [Number(p.latitude), Number(p.longitude)]);
-    route.setLatLngs(positions);
-
-    if (history.length) {
-      updatePanel(history[history.length - 1], false);
-    } else {
-      updateTripSummary();
-      refreshChart();
+    if (!Array.isArray(history)) {
+      history = [];
     }
+
+    selectedTripIndex = null;
+
+    const currentTrip = getCurrentTrip();
+
+    if (currentTrip.length) {
+      drawTripRoute(currentTrip, true);
+      updateLivePanel(currentTrip[currentTrip.length - 1]);
+    } else {
+      updateTripIndicators();
+      refreshChart([]);
+      renderTripList();
+    }
+
+    renderTripList();
   } catch (e) {
     console.error("Erro ao carregar histórico:", e);
   }
@@ -284,27 +443,23 @@ function connect() {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data);
+
       if (data.latitude === null) return;
 
       const last = history[history.length - 1];
+
       if (!last || data.timestamp !== last.timestamp) {
         history.push(data);
       }
 
-      // Se houve uma pausa > 5 min, a nova posição inicia uma nova viagem.
-      // A rota visual também começa novamente nesse ponto.
-      if (last && data.timestamp) {
-        const gap = (
-          new Date(data.timestamp).getTime() -
-          new Date(last.timestamp).getTime()
-        ) / 60000;
+      updateLivePanel(data);
 
-        if (gap > TRIP_GAP_MINUTES) {
-          route.setLatLngs([]);
-        }
+      // Se estiver no histórico, apenas atualizamos a lista.
+      // O usuário continua visualizando a viagem escolhida.
+      if (selectedTripIndex !== null) {
+        renderTripList();
+        updateTripIndicators();
       }
-
-      updatePanel(data, true);
     } catch (e) {
       console.error("Erro nos dados:", e);
     }
@@ -319,14 +474,20 @@ function connect() {
   socket.onerror = () => socket.close();
 }
 
+liveTripButton.addEventListener("click", showLiveTrip);
+
 document.getElementById("clearHistory").onclick = async () => {
   if (!confirm("Apagar todo o histórico salvo no servidor?")) return;
 
   try {
     const response = await fetch("/api/history", { method: "DELETE" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
     history = [];
+    selectedTripIndex = null;
     route.setLatLngs([]);
 
     if (marker) {
@@ -345,9 +506,11 @@ document.getElementById("clearHistory").onclick = async () => {
     travelTimeEl.textContent = "00:00:00";
     tripNumberEl.textContent = "0";
     tripCountEl.textContent = "0";
+    viewModeEl.textContent = "Exibindo viagem atual";
     mapsLink.href = "#";
 
-    refreshChart();
+    refreshChart([]);
+    renderTripList();
   } catch (e) {
     console.error("Erro ao limpar histórico:", e);
     alert("Não foi possível limpar o histórico.");

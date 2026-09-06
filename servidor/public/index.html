@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoramento Veicular 3.1</title>
+<title>Monitoramento Veicular 5.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -24,7 +24,7 @@
     <div id="speedStatus" class="normal">Dentro do limite</div>
   </div>
   <div class="card"><div class="label">VELOCIDADE MÁXIMA</div><div class="metric"><span id="maxSpeed">0.0</span> km/h</div></div>
-  <div class="card"><div class="label">PONTOS REGISTRADOS</div><div class="metric" id="points">0</div></div>
+  <div class="card"><div class="label">PONTOS DA VIAGEM</div><div class="metric" id="points">0</div></div>
   <div class="card"><div class="label">LATITUDE</div><div class="metric small" id="latitude">--</div></div>
   <div class="card"><div class="label">LONGITUDE</div><div class="metric small" id="longitude">--</div></div>
   <div class="card"><div class="label">LIMITE</div><div class="metric">30 km/h</div></div>
@@ -41,6 +41,18 @@
     <a id="mapsLink" href="#" target="_blank" rel="noopener">Abrir no Google Maps</a>
   </div>
   <div id="map"></div>
+</section>
+
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Histórico de viagens</h2>
+      <div id="viewMode" class="view-mode">Exibindo viagem atual</div>
+    </div>
+    <button id="liveTrip">Voltar ao tempo real</button>
+  </div>
+  <div id="tripList" class="trip-list"></div>
 </section>
 
 <section class="panel">

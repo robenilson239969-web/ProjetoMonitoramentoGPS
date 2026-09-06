@@ -66,3 +66,17 @@ Regra:
 - A rota visual reinicia quando uma nova viagem é detectada.
 
 Para iniciar uma nova viagem, basta deixar o ESP32 sem enviar dados por mais de 5 minutos e depois voltar a enviar.
+
+
+========================================
+MONITORAMENTO GPS 5.0
+========================================
+
+Novo módulo de histórico de viagens:
+- Viagens separadas automaticamente por intervalo maior que 5 minutos
+- Lista de viagens com data, distância, duração e velocidade máxima
+- Seleção de uma viagem para visualizar sua rota no mapa
+- Gráfico de velocidade da viagem selecionada
+- Botão para retornar ao tempo real
+- Os dados continuam armazenados na tabela gps_data do Supabase
+- Não foi necessária alteração no ESP32
