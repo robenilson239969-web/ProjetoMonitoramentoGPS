@@ -33,3 +33,18 @@ IMPORTANTE:
 Esta versão ainda funciona na rede local.
 Na versão seguinte, colocaremos o servidor na nuvem para acesso externo.
 Não publique seu token Blynk nem sua senha Wi-Fi.
+
+
+========================================
+MONITORAMENTO GPS 3.1
+========================================
+
+Além dos recursos anteriores, o painel agora calcula:
+
+- Distância percorrida em km usando latitude/longitude (fórmula de Haversine)
+- Velocidade média da viagem
+- Tempo de viagem
+- Rota no mapa usando o histórico salvo no Supabase
+- Correção para não duplicar o último ponto da rota ao carregar o histórico
+
+O ESP32 e o server.js continuam com a mesma estrutura da versão anterior.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoramento Veicular 2.0</title>
+<title>Monitoramento Veicular 3.1</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -28,6 +28,9 @@
   <div class="card"><div class="label">LATITUDE</div><div class="metric small" id="latitude">--</div></div>
   <div class="card"><div class="label">LONGITUDE</div><div class="metric small" id="longitude">--</div></div>
   <div class="card"><div class="label">LIMITE</div><div class="metric">30 km/h</div></div>
+  <div class="card"><div class="label">DISTÂNCIA PERCORRIDA</div><div class="metric"><span id="distance">0.00</span> km</div></div>
+  <div class="card"><div class="label">VELOCIDADE MÉDIA</div><div class="metric"><span id="avgSpeed">0.0</span> km/h</div></div>
+  <div class="card"><div class="label">TEMPO DE VIAGEM</div><div class="metric" id="travelTime">00:00:00</div></div>
 </section>
 
 <section class="panel">
