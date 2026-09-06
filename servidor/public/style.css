@@ -42,3 +42,5 @@ button{border:0;border-radius:7px;padding:10px 14px;cursor:pointer;background:#2
   .trip-main{flex-direction:column}
   .trip-details{gap:8px;flex-direction:column}
 }
+
+.vehicle-selector-panel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px}.vehicle-selector-panel label{font-weight:700;font-size:12px}#vehicleSelect{padding:9px 12px;border:1px solid #d8dde5;border-radius:8px;background:#fff}#vehicleStatus{font-weight:700;font-size:12px}

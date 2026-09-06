@@ -1,3 +1,34 @@
+const vehicleSelect = document.getElementById("vehicleSelect");
+const vehicleStatus = document.getElementById("vehicleStatus");
+let selectedVehicle = localStorage.getItem("selectedVehicle") || "VEICULO-01";
+
+async function loadVehicles6() {
+  try {
+    const r = await fetch("/api/vehicles");
+    if (!r.ok) return;
+    const list = await r.json();
+    if (!Array.isArray(list) || !list.length) return;
+    vehicleSelect.innerHTML = "";
+    list.forEach(v => {
+      const o = document.createElement("option");
+      o.value = v.vehicle_id;
+      o.textContent = v.vehicle_id;
+      vehicleSelect.appendChild(o);
+    });
+    if (!list.some(v => v.vehicle_id === selectedVehicle)) selectedVehicle = list[0].vehicle_id;
+    vehicleSelect.value = selectedVehicle;
+  } catch(e) { console.error("Erro ao carregar veículos:", e); }
+}
+
+if (vehicleSelect) {
+  vehicleSelect.value = selectedVehicle;
+  vehicleSelect.addEventListener("change", () => {
+    selectedVehicle = vehicleSelect.value;
+    localStorage.setItem("selectedVehicle", selectedVehicle);
+    location.reload();
+  });
+}
+
 const SPEED_LIMIT = 30;
 const TRIP_GAP_MINUTES = 5;
 
@@ -400,7 +431,7 @@ function showLiveTrip() {
 
 async function loadHistory() {
   try {
-    const response = await fetch("/api/history");
+    const response = await fetch(`/api/history?vehicle_id=${encodeURIComponent(selectedVehicle)}`);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -517,5 +548,5 @@ document.getElementById("clearHistory").onclick = async () => {
   }
 };
 
-loadHistory();
+loadVehicles6().then(() => loadHistory());
 connect();

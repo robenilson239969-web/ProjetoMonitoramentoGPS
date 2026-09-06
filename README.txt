@@ -80,3 +80,11 @@ Novo módulo de histórico de viagens:
 - Botão para retornar ao tempo real
 - Os dados continuam armazenados na tabela gps_data do Supabase
 - Não foi necessária alteração no ESP32
+
+
+MONITORAMENTO GPS 6.0
+- Suporte a vehicle_id.
+- Seletor de veículo no painel.
+- Histórico filtrado por veículo.
+- ESP32 usa VEICULO-01 por padrão.
+- Execute SUPABASE_6_0.sql antes do deploy.

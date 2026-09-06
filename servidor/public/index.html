@@ -3,11 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoramento Veicular 5.0</title>
+<title>Monitoramento Veicular 6.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body><div class="vehicle-selector-panel">
+<label for="vehicleSelect">VEÍCULO</label>
+<select id="vehicleSelect"><option>VEICULO-01</option></select>
+<span id="vehicleStatus">● ONLINE</span>
+</div>
+
 <header>
   <div>
     <h1>Monitoramento Veicular</h1>

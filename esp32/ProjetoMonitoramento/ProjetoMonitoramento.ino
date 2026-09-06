@@ -1,6 +1,17 @@
+#include <U8g2lib.h>
+#include <Wire.h>
+
+// Initialize the display (check I2C address)
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+
 #define BLYNK_TEMPLATE_ID "TMPL2yRBpEL5V"
 #define BLYNK_TEMPLATE_NAME "VelocidadePex"
-#define BLYNK_AUTH_TOKEN "SEU_TOKEN_BLYNK"
+#define BLYNK_AUTH_TOKEN "h-4CXPecO58-j-JF_bMNGkM6lv8cG7jM"
+
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "rob";
+char pass[] = "rob123489";
+
 #define BLYNK_PRINT Serial
 
 #include <WiFi.h>
@@ -8,15 +19,10 @@
 #include <HTTPClient.h>
 #include <BlynkSimpleEsp32.h>
 #include <TinyGPS++.h>
-#include <U8g2lib.h>
-#include <Wire.h>
-
-char auth[] = BLYNK_AUTH_TOKEN;
-char ssid[] = "SEU_WIFI";
-char pass[] = "SUA_SENHA";
 
 // IP do computador onde o Node.js está rodando.
-const char* serverURL = "http://192.168.1.100:3000/api/gps";
+const char* serverURL = "https://projetomonitoramentogps.onrender.com/api/gps";
+const char* vehicleId = "VEICULO-01";
 
 #define RXD2 16
 #define TXD2 17
@@ -25,10 +31,6 @@ const char* serverURL = "http://192.168.1.100:3000/api/gps";
 
 HardwareSerial neogps(2);
 TinyGPSPlus gps;
-
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(
-  U8G2_R0, U8X8_PIN_NONE
-);
 
 BlynkTimer timer;
 

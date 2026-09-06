@@ -58,7 +58,7 @@ function transmitir(data) {
 async function carregarUltimoDado() {
   const { data, error } = await supabase
     .from("gps_data")
-    .select("latitude, longitude, speed, timestamp")
+    .select("vehicle_id, latitude, longitude, speed, timestamp")
     .order("timestamp", { ascending: false })
     .limit(1);
 
@@ -91,6 +91,7 @@ async function carregarUltimoDado() {
 
 app.post("/api/gps", async (req, res) => {
 
+  const vehicle_id = String(req.body.vehicle_id || "VEICULO-01").trim() || "VEICULO-01";
   const latitude = Number(req.body.latitude);
   const longitude = Number(req.body.longitude);
   const speed = Number(req.body.speed);
@@ -115,6 +116,7 @@ app.post("/api/gps", async (req, res) => {
 
   // Dados que serão armazenados
   const data = {
+    vehicle_id,
     latitude,
     longitude,
     speed,
@@ -185,6 +187,29 @@ app.get("/api/gps", async (req, res) => {
 // ==========================================
 // HISTÓRICO
 // ==========================================
+
+app.get("/api/vehicles", async (req, res) => {
+  const { data, error } = await supabase
+    .from("gps_data")
+    .select("vehicle_id, latitude, longitude, speed, timestamp")
+    .order("timestamp", { ascending: false })
+    .limit(100000);
+
+  if (error) {
+    return res.status(500).json({ error: "Erro ao carregar veículos", details: error.message });
+  }
+
+  const seen = new Set();
+  const vehicles = [];
+  for (const row of data || []) {
+    const id = String(row.vehicle_id || "VEICULO-01");
+    if (!seen.has(id)) {
+      seen.add(id);
+      vehicles.push({ ...row, vehicle_id: id });
+    }
+  }
+  res.json(vehicles);
+});
 
 app.get("/api/history", async (req, res) => {
 
