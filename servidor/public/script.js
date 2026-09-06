@@ -1,4 +1,5 @@
 const SPEED_LIMIT = 30;
+const TRIP_GAP_MINUTES = 5;
 
 const map = L.map("map").setView([-3.119, -60.021], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -23,6 +24,8 @@ const mapsLink = document.getElementById("mapsLink");
 const distanceEl = document.getElementById("distance");
 const avgSpeedEl = document.getElementById("avgSpeed");
 const travelTimeEl = document.getElementById("travelTime");
+const tripNumberEl = document.getElementById("tripNumber");
+const tripCountEl = document.getElementById("tripCount");
 
 const chart = new Chart(document.getElementById("speedChart"), {
   type: "line",
@@ -49,15 +52,10 @@ const chart = new Chart(document.getElementById("speedChart"), {
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
-    scales: {
-      y: {
-        beginAtZero: true
-      }
-    }
+    scales: { y: { beginAtZero: true } }
   }
 });
 
-// Distância entre dois pontos GPS usando a fórmula de Haversine.
 function distanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -73,9 +71,7 @@ function distanceKm(lat1, lon1, lat2, lon2) {
 }
 
 function formatDuration(ms) {
-  if (!Number.isFinite(ms) || ms < 0) {
-    return "00:00:00";
-  }
+  if (!Number.isFinite(ms) || ms < 0) return "00:00:00";
 
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -97,68 +93,95 @@ function validGpsHistory() {
   );
 }
 
+// Divide o histórico em viagens automaticamente.
+// Uma pausa maior que 5 minutos inicia uma nova viagem.
+function splitTrips(points) {
+  if (!points.length) return [];
+
+  const trips = [[points[0]]];
+
+  for (let i = 1; i < points.length; i++) {
+    const previous = new Date(points[i - 1].timestamp).getTime();
+    const current = new Date(points[i].timestamp).getTime();
+    const gapMinutes = (current - previous) / 60000;
+
+    if (gapMinutes > TRIP_GAP_MINUTES) {
+      trips.push([]);
+    }
+
+    trips[trips.length - 1].push(points[i]);
+  }
+
+  return trips;
+}
+
 function calculateDistance(points) {
   let total = 0;
 
   for (let i = 1; i < points.length; i++) {
-    const previous = points[i - 1];
-    const current = points[i];
-
     total += distanceKm(
-      Number(previous.latitude),
-      Number(previous.longitude),
-      Number(current.latitude),
-      Number(current.longitude)
+      Number(points[i - 1].latitude),
+      Number(points[i - 1].longitude),
+      Number(points[i].latitude),
+      Number(points[i].longitude)
     );
   }
 
   return total;
 }
 
-function refreshSummary() {
+function updateTripSummary() {
   const valid = validGpsHistory();
+  const trips = splitTrips(valid);
 
-  const speeds = valid.map(p => Number(p.speed));
-  const max = speeds.length ? Math.max(...speeds) : 0;
+  tripCountEl.textContent = trips.length;
 
-  const distance = calculateDistance(valid);
-
-  let avgSpeed = 0;
-  if (valid.length) {
-    const start = new Date(valid[0].timestamp).getTime();
-    const end = new Date(valid[valid.length - 1].timestamp).getTime();
-    const hours = (end - start) / 3600000;
-
-    if (hours > 0) {
-      avgSpeed = distance / hours;
-    } else {
-      // Com apenas um ponto ou intervalo muito curto, usa a velocidade registrada.
-      avgSpeed = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
-    }
+  if (!trips.length) {
+    tripNumberEl.textContent = "0";
+    distanceEl.textContent = "0.00";
+    avgSpeedEl.textContent = "0.0";
+    travelTimeEl.textContent = "00:00:00";
+    maxEl.textContent = "0.0";
+    return;
   }
 
-  const travelMs = valid.length > 1
-    ? new Date(valid[valid.length - 1].timestamp).getTime() -
-      new Date(valid[0].timestamp).getTime()
-    : 0;
+  const currentTrip = trips[trips.length - 1];
+  tripNumberEl.textContent = trips.length;
 
-  maxEl.textContent = max.toFixed(1);
-  pointsEl.textContent = valid.length;
+  const distance = calculateDistance(currentTrip);
+  const speeds = currentTrip.map(p => Number(p.speed));
+  const max = speeds.length ? Math.max(...speeds) : 0;
+
+  const start = new Date(currentTrip[0].timestamp).getTime();
+  const end = new Date(currentTrip[currentTrip.length - 1].timestamp).getTime();
+  const durationMs = Math.max(0, end - start);
+  const durationHours = durationMs / 3600000;
+
+  // Média baseada em distância / tempo, quando existe intervalo suficiente.
+  // Para uma viagem com apenas um ponto, usa a velocidade registrada.
+  let avgSpeed = 0;
+  if (durationHours > 0) {
+    avgSpeed = distance / durationHours;
+  } else if (speeds.length) {
+    avgSpeed = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
+  }
+
   distanceEl.textContent = distance.toFixed(2);
   avgSpeedEl.textContent = avgSpeed.toFixed(1);
-  travelTimeEl.textContent = formatDuration(travelMs);
+  travelTimeEl.textContent = formatDuration(durationMs);
+  maxEl.textContent = max.toFixed(1);
 }
 
 function refreshChart() {
-  const data = history.slice(-300);
+  const valid = validGpsHistory();
+  const trips = splitTrips(valid);
+  const data = trips.length ? trips[trips.length - 1].slice(-300) : [];
 
   chart.data.labels = data.map(p =>
     new Date(p.timestamp).toLocaleTimeString("pt-BR")
   );
-
   chart.data.datasets[0].data = data.map(p => Number(p.speed));
   chart.data.datasets[1].data = data.map(() => SPEED_LIMIT);
-
   chart.update();
 }
 
@@ -166,9 +189,7 @@ function updateMap(data, addToRoute = true) {
   const lat = Number(data.latitude);
   const lon = Number(data.longitude);
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return;
-  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
   const pos = [lat, lon];
 
@@ -183,19 +204,15 @@ function updateMap(data, addToRoute = true) {
     const currentRoute = route.getLatLngs();
     const lastPoint = currentRoute[currentRoute.length - 1];
 
-    if (
-      !lastPoint ||
-      lastPoint.lat !== lat ||
-      lastPoint.lng !== lon
-    ) {
+    if (!lastPoint || lastPoint.lat !== lat || lastPoint.lng !== lon) {
       route.addLatLng(pos);
     }
   }
 
   const speed = Number(data.speed);
-
   marker.setPopupContent(
     `<b>Veículo</b><br>` +
+    `Viagem: #${splitTrips(validGpsHistory()).length}<br>` +
     `Velocidade: ${speed.toFixed(1)} km/h<br>` +
     `Latitude: ${lat.toFixed(6)}<br>` +
     `Longitude: ${lon.toFixed(6)}`
@@ -205,9 +222,7 @@ function updateMap(data, addToRoute = true) {
 }
 
 function updatePanel(data, addToRoute = true) {
-  if (data.latitude === null) {
-    return;
-  }
+  if (data.latitude === null) return;
 
   const speed = Number(data.speed);
   const lat = Number(data.latitude);
@@ -227,40 +242,29 @@ function updatePanel(data, addToRoute = true) {
     speedStatus.className = "normal";
   }
 
-  updatedEl.textContent =
-    new Date(data.timestamp).toLocaleTimeString("pt-BR");
+  updatedEl.textContent = new Date(data.timestamp).toLocaleTimeString("pt-BR");
 
   updateMap(data, addToRoute);
-  refreshSummary();
+  updateTripSummary();
   refreshChart();
 }
 
 async function loadHistory() {
   try {
     const response = await fetch("/api/history");
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     history = await response.json();
+    if (!Array.isArray(history)) history = [];
 
-    if (!Array.isArray(history)) {
-      history = [];
-    }
-
-    const positions = validGpsHistory().map(p => [
-      Number(p.latitude),
-      Number(p.longitude)
-    ]);
-
+    const valid = validGpsHistory();
+    const positions = valid.map(p => [Number(p.latitude), Number(p.longitude)]);
     route.setLatLngs(positions);
 
     if (history.length) {
-      // O último ponto já foi colocado na rota acima.
       updatePanel(history[history.length - 1], false);
     } else {
-      refreshSummary();
+      updateTripSummary();
       refreshChart();
     }
   } catch (e) {
@@ -280,15 +284,24 @@ function connect() {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data);
-
-      if (data.latitude === null) {
-        return;
-      }
+      if (data.latitude === null) return;
 
       const last = history[history.length - 1];
-
       if (!last || data.timestamp !== last.timestamp) {
         history.push(data);
+      }
+
+      // Se houve uma pausa > 5 min, a nova posição inicia uma nova viagem.
+      // A rota visual também começa novamente nesse ponto.
+      if (last && data.timestamp) {
+        const gap = (
+          new Date(data.timestamp).getTime() -
+          new Date(last.timestamp).getTime()
+        ) / 60000;
+
+        if (gap > TRIP_GAP_MINUTES) {
+          route.setLatLngs([]);
+        }
       }
 
       updatePanel(data, true);
@@ -307,18 +320,11 @@ function connect() {
 }
 
 document.getElementById("clearHistory").onclick = async () => {
-  if (!confirm("Apagar o histórico salvo no servidor?")) {
-    return;
-  }
+  if (!confirm("Apagar todo o histórico salvo no servidor?")) return;
 
   try {
-    const response = await fetch("/api/history", {
-      method: "DELETE"
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    const response = await fetch("/api/history", { method: "DELETE" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     history = [];
     route.setLatLngs([]);
@@ -337,8 +343,10 @@ document.getElementById("clearHistory").onclick = async () => {
     distanceEl.textContent = "0.00";
     avgSpeedEl.textContent = "0.0";
     travelTimeEl.textContent = "00:00:00";
-
+    tripNumberEl.textContent = "0";
+    tripCountEl.textContent = "0";
     mapsLink.href = "#";
+
     refreshChart();
   } catch (e) {
     console.error("Erro ao limpar histórico:", e);

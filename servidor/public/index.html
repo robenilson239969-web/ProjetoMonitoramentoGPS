@@ -31,6 +31,8 @@
   <div class="card"><div class="label">DISTÂNCIA PERCORRIDA</div><div class="metric"><span id="distance">0.00</span> km</div></div>
   <div class="card"><div class="label">VELOCIDADE MÉDIA</div><div class="metric"><span id="avgSpeed">0.0</span> km/h</div></div>
   <div class="card"><div class="label">TEMPO DE VIAGEM</div><div class="metric" id="travelTime">00:00:00</div></div>
+  <div class="card"><div class="label">VIAGEM ATUAL</div><div class="metric">#<span id="tripNumber">1</span></div></div>
+  <div class="card"><div class="label">VIAGENS IDENTIFICADAS</div><div class="metric" id="tripCount">0</div></div>
 </section>
 
 <section class="panel">
@@ -44,7 +46,7 @@
 <section class="panel">
   <div class="panel-header">
     <h2>Gráfico de velocidade</h2>
-    <button id="clearHistory">Nova viagem / Limpar histórico</button>
+    <button id="clearHistory">Limpar histórico</button>
   </div>
   <div class="chart-wrap"><canvas id="speedChart"></canvas></div>
 </section>

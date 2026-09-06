@@ -48,3 +48,21 @@ Além dos recursos anteriores, o painel agora calcula:
 - Correção para não duplicar o último ponto da rota ao carregar o histórico
 
 O ESP32 e o server.js continuam com a mesma estrutura da versão anterior.
+
+
+========================================
+MONITORAMENTO GPS 4.0 - VIAGENS
+========================================
+
+A versão 4.0 identifica viagens automaticamente sem alterar a tabela gps_data.
+
+Regra:
+- Os pontos continuam sendo gravados normalmente no Supabase.
+- Uma pausa superior a 5 minutos entre dois registros inicia uma nova viagem.
+- A viagem atual é a última sequência de pontos.
+- O painel mostra o número da viagem atual e a quantidade de viagens identificadas.
+- Distância, velocidade média, velocidade máxima e tempo são calculados para a viagem atual.
+- O gráfico mostra a viagem atual.
+- A rota visual reinicia quando uma nova viagem é detectada.
+
+Para iniciar uma nova viagem, basta deixar o ESP32 sem enviar dados por mais de 5 minutos e depois voltar a enviar.
